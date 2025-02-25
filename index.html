@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Report Card Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Replace html2pdf with jsPDF and html2canvas separately for better control -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f5f5f5;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 50px;
+      }
+      .upload-section {
+        background-color: white;
+        padding: 60px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      h1,
+      h2 {
+        color: #2980b9;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        background-color: #2980b9;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 10px;
+      }
+      button:hover {
+        background-color: #3498db;
+      }
+      button.btn-danger {
+        background-color: #e74c3c;
+      }
+      button.btn-danger:hover {
+        background-color: #c0392b;
+      }
+      .report-card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-top: 20px;
+        page-break-inside: avoid;
+        margin-bottom: 40px;
+        position: relative;
+      }
+      .report-card-header {
+        background-color: #e6f2f7;
+        padding: 20px;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+        display: flex;
+        align-items: center;
+      }
+      .logo {
+        width: 80px;
+        height: 80px;
+        margin-right: 20px;
+        object-fit: contain;
+      }
+      .school-info h2 {
+        margin: 0;
+        font-size: 24px;
+      }
+      .school-info p {
+        margin: 5px 0 0;
+        color: #2980b9;
+      }
+      .report-card-body {
+        padding: 20px;
+      }
+      .student-info {
+        margin-bottom: 20px;
+      }
+      .info-row {
+        display: flex;
+        margin-bottom: 10px;
+      }
+      .info-label {
+        width: 100px;
+        font-weight: bold;
+        color: #2980b9;
+      }
+      .info-value {
+        flex: 1;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 2px;
+        margin-left: 10px;
+      }
+      .remove-card {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-weight: bold;
+        z-index: 10;
+      }
+      .remove-card:hover {
+        background-color: #c0392b;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th {
+        background-color: #71a6c4;
+        color: white;
+        padding: 10px;
+        text-align: left;
+      }
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+      }
+      .actions-section {
+        text-align: center;
+        margin-top: 20px;
+      }
+      @media print {
+        .upload-section,
+        .actions-section,
+        .remove-card,
+        .card-actions {
+          display: none;
+        }
+        .report-card {
+          box-shadow: none;
+        }
+      }
+      #reportCardsContainer {
+        margin-top: 30px;
+      }
+      .spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border-left-color: #2980b9;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 10px;
+        display: none;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .card-actions {
+        display: flex;
+        justify-content: center;
+        margin-top: 10px;
+        padding-bottom: 15px;
+      }
+      #logoPreview {
+        max-width: 100px;
+        max-height: 100px;
+        margin-top: 10px;
+        display: none;
+        border: 1px solid #ddd;
+      }
+      .logo-container {
+        position: relative;
+      }
+      .remove-logo {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.7);
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
+        cursor: pointer;
+        display: none;
+        padding: 0;
+        font-weight: bold;
+        color: #e74c3c;
+      }
+      .file-list {
+        margin-top: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        max-height: 150px;
+        overflow-y: auto;
+      }
+      .file-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+      }
+      .file-item:last-child {
+        border-bottom: none;
+      }
+      .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        background-color: #3498db;
+        color: white;
+        font-size: 0.8em;
+        margin-right: 5px;
+      }
+      .badge-warning {
+        background-color: #f39c12;
+      }
+      .duplicate-warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+        color: #856404;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+      }
+      .duplicate-list {
+        margin-top: 5px;
+        font-weight: bold;
+      }
+      .progress-container {
+        width: 100%;
+        background-color: #f1f1f1;
+        border-radius: 4px;
+        margin-top: 10px;
+        height: 20px;
+        display: none;
+      }
+      .progress-bar {
+        height: 20px;
+        border-radius: 4px;
+        background-color: #2980b9;
+        width: 0%;
+        text-align: center;
+        line-height: 20px;
+        color: white;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="upload-section">
+        <h1>Report Card Generator</h1>
+        <div class="form-group">
+          <label for="excelFile">Upload Student Data (Excel/CSV)</label>
+          <input
+            type="file"
+            id="excelFile"
+            accept=".xlsx, .xls, .csv"
+            multiple
+          />
+          <div id="fileList" class="file-list" style="display: none"></div>
+        </div>
+        <div class="form-group">
+          <label for="schoolName">School Name</label>
+          <input type="text" id="schoolName" value="Salford High School" />
+        </div>
+        <div class="form-group">
+          <label for="examName">Exam/Term Name</label>
+          <input
+            type="text"
+            id="examName"
+            placeholder="e.g. First Term Examination"
+          />
+        </div>
+        <div class="form-group">
+          <label for="logoFile">School Logo (optional)</label>
+          <input type="file" id="logoFile" accept="image/*" />
+          <div class="logo-container">
+            <img id="logoPreview" src="" alt="Logo Preview" />
+            <button class="remove-logo" id="removeLogo">×</button>
+          </div>
+        </div>
+        <button id="generateBtn">Generate Report Cards</button>
+        <span id="spinner" class="spinner"></span>
+        <div id="progressContainer" class="progress-container">
+          <div id="progressBar" class="progress-bar">0%</div>
+        </div>
+      </div>
+
+      <div
+        id="duplicateWarning"
+        class="duplicate-warning"
+        style="display: none"
+      >
+        <strong>Duplicate Student Names Detected!</strong>
+        <p>
+          The following students appear multiple times across the spreadsheets:
+        </p>
+        <div id="duplicateList" class="duplicate-list"></div>
+      </div>
+
+      <div id="reportCardsContainer"></div>
+
+      <div class="actions-section">
+        <button id="downloadAllBtn" style="display: none">
+          Download All Report Cards (PDF)
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // Make jsPDF available globally
+      const { jsPDF } = window.jspdf;
+
+      let schoolLogo = null;
+      let uploadedFiles = [];
+
+      document
+        .getElementById("generateBtn")
+        .addEventListener("click", generateReportCards);
+      document
+        .getElementById("downloadAllBtn")
+        .addEventListener("click", downloadAllReportCards);
+      document
+        .getElementById("logoFile")
+        .addEventListener("change", handleLogoUpload);
+      document
+        .getElementById("removeLogo")
+        .addEventListener("click", removeLogo);
+      document
+        .getElementById("excelFile")
+        .addEventListener("change", handleFileSelection);
+
+      function handleFileSelection(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+          uploadedFiles = Array.from(files);
+
+          // Display file list
+          const fileListContainer = document.getElementById("fileList");
+          fileListContainer.style.display = "block";
+          fileListContainer.innerHTML = "";
+
+          uploadedFiles.forEach((file, index) => {
+            const fileItem = document.createElement("div");
+            fileItem.className = "file-item";
+            fileItem.innerHTML = `
+              <span>${file.name}</span>
+              <button class="btn-danger" onclick="removeFile(${index})">Remove</button>
+            `;
+            fileListContainer.appendChild(fileItem);
+          });
+        }
+      }
+
+      function removeFile(index) {
+        uploadedFiles.splice(index, 1);
+
+        // Update the file input
+        const fileInput = document.getElementById("excelFile");
+        const dataTransfer = new DataTransfer();
+
+        uploadedFiles.forEach((file) => {
+          dataTransfer.items.add(file);
+        });
+
+        fileInput.files = dataTransfer.files;
+
+        // Update the displayed list
+        handleFileSelection({ target: { files: fileInput.files } });
+
+        if (uploadedFiles.length === 0) {
+          document.getElementById("fileList").style.display = "none";
+        }
+      }
+
+      function handleLogoUpload(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (event) {
+            schoolLogo = event.target.result;
+            const logoPreview = document.getElementById("logoPreview");
+            logoPreview.src = schoolLogo;
+            logoPreview.style.display = "block";
+            document.getElementById("removeLogo").style.display = "block";
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+
+      function removeLogo() {
+        schoolLogo = null;
+        document.getElementById("logoFile").value = "";
+        document.getElementById("logoPreview").style.display = "none";
+        document.getElementById("removeLogo").style.display = "none";
+      }
+
+      // Sample grades conversion for demo
+      function calculateGrade(percentage) {
+        if (percentage >= 90) return "A";
+        else if (percentage >= 80) return "B";
+        else if (percentage >= 70) return "C";
+        else if (percentage >= 60) return "D";
+        else if (percentage >= 55) return "E";
+        else return "F";
+      }
+
+      async function generateReportCards() {
+        const schoolName = document.getElementById("schoolName").value;
+        const examName = document.getElementById("examName").value;
+        const spinner = document.getElementById("spinner");
+        const duplicateWarning = document.getElementById("duplicateWarning");
+        const duplicateList = document.getElementById("duplicateList");
+
+        if (uploadedFiles.length === 0) {
+          alert("Please select at least one file");
+          return;
+        }
+
+        // Show loading spinner
+        spinner.style.display = "inline-block";
+        duplicateWarning.style.display = "none";
+
+        try {
+          // Process all files and combine the data
+          const allStudentData = {};
+          const duplicateStudents = new Set();
+
+          for (const file of uploadedFiles) {
+            const data = await processFile(file);
+
+            // Merge the student data with existing data
+            for (const studentName in data) {
+              if (allStudentData[studentName]) {
+                // This is a duplicate student name
+                duplicateStudents.add(studentName);
+
+                // Merge the subjects
+                allStudentData[studentName].subjects = [
+                  ...allStudentData[studentName].subjects,
+                  ...data[studentName].subjects,
+                ];
+              } else {
+                allStudentData[studentName] = data[studentName];
+              }
+            }
+          }
+
+          // If duplicates were found, show the warning
+          if (duplicateStudents.size > 0) {
+            duplicateList.innerHTML = Array.from(duplicateStudents)
+              .map((name) => `<div>${name}</div>`)
+              .join("");
+            duplicateWarning.style.display = "block";
+
+            // Sort the data to show duplicates first
+            const sortedStudentData = {};
+
+            // First add duplicates
+            Array.from(duplicateStudents).forEach((name) => {
+              sortedStudentData[name] = allStudentData[name];
+            });
+
+            // Then add the rest
+            Object.keys(allStudentData)
+              .filter((name) => !duplicateStudents.has(name))
+              .forEach((name) => {
+                sortedStudentData[name] = allStudentData[name];
+              });
+
+            renderReportCards(sortedStudentData, schoolName, examName);
+          } else {
+            renderReportCards(allStudentData, schoolName, examName);
+          }
+
+          document.getElementById("downloadAllBtn").style.display =
+            "inline-block";
+        } catch (error) {
+          console.error("Error processing files:", error);
+          alert(
+            "Error processing the files. Please ensure they are valid Excel/CSV files."
+          );
+        } finally {
+          spinner.style.display = "none";
+        }
+      }
+
+      async function processFile(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onload = function (e) {
+            try {
+              const data = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(data, { type: "array" });
+              const firstSheetName = workbook.SheetNames[0];
+              const worksheet = workbook.Sheets[firstSheetName];
+              const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+              if (jsonData.length === 0) {
+                reject(new Error("No data found in the spreadsheet"));
+                return;
+              }
+
+              console.log("Spreadsheet data:", jsonData);
+
+              // Determine column names by checking first row
+              const firstRow = jsonData[0];
+              const columns = {
+                name: Object.keys(firstRow).find(
+                  (key) =>
+                    key.toLowerCase().includes("name") ||
+                    key.toLowerCase() === "student"
+                ),
+                class: Object.keys(firstRow).find((key) =>
+                  key.toLowerCase().includes("class")
+                ),
+                subject: Object.keys(firstRow).find((key) =>
+                  key.toLowerCase().includes("subject")
+                ),
+                score: Object.keys(firstRow).find(
+                  (key) =>
+                    key.toLowerCase().includes("score") ||
+                    key.toLowerCase().includes("mark")
+                ),
+                total: Object.keys(firstRow).find(
+                  (key) =>
+                    key.toLowerCase().includes("total") ||
+                    key.toLowerCase().includes("max")
+                ),
+              };
+
+              console.log("Detected columns:", columns);
+
+              // Group by student name
+              const studentGroups = {};
+              jsonData.forEach((row) => {
+                // Get student name with fallback options
+                const studentName = row[columns.name] || "";
+
+                // Get class with fallback to P1
+                const studentClass = columns.class ? row[columns.class] : "P1";
+
+                if (studentName) {
+                  if (!studentGroups[studentName]) {
+                    studentGroups[studentName] = {
+                      name: studentName,
+                      class: studentClass || "P1",
+                      subjects: [],
+                    };
+                  }
+
+                  // Extract subject, score, and total
+                  const subject = columns.subject ? row[columns.subject] : "";
+                  const score = columns.score
+                    ? parseFloat(row[columns.score])
+                    : 0;
+                  const totalQuestions = columns.total
+                    ? parseFloat(row[columns.total])
+                    : 100;
+
+                  if (subject) {
+                    // Calculate grade based on score percentage
+                    const percentage = (score / totalQuestions) * 100;
+                    const grade = calculateGrade(percentage);
+
+                    studentGroups[studentName].subjects.push({
+                      subject,
+                      score,
+                      totalQuestions,
+                      grade,
+                      source: file.name, // Add source file for tracking
+                    });
+                  }
+                }
+              });
+
+              console.log("Processed student groups:", studentGroups);
+              resolve(studentGroups);
+            } catch (error) {
+              console.error("Error processing file:", error);
+              reject(error);
+            }
+          };
+
+          reader.onerror = function () {
+            reject(new Error("Error reading the file"));
+          };
+
+          reader.readAsArrayBuffer(file);
+        });
+      }
+
+      function renderReportCards(studentGroups, schoolName, examName) {
+        const container = document.getElementById("reportCardsContainer");
+        container.innerHTML = "";
+
+        // Keep track of all report card IDs
+        const reportCardIds = [];
+
+        for (const studentName in studentGroups) {
+          const student = studentGroups[studentName];
+          const reportCardId =
+            "report-card-" +
+            Date.now() +
+            "-" +
+            Math.random().toString(36).substr(2, 9);
+          reportCardIds.push(reportCardId);
+
+          const reportCard = document.createElement("div");
+          reportCard.className = "report-card";
+          reportCard.id = reportCardId;
+
+          // Determine what logo to use
+          let logoHtml;
+          if (schoolLogo) {
+            logoHtml = `<img src="${schoolLogo}" alt="${schoolName} Logo" class="logo">`;
+          } else {
+            // Default SVG logo
+            logoHtml = `
+              <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="logo">
+                <path d="M50 10 L90 40 L80 40 L80 80 L20 80 L20 40 L10 40 Z" fill="#2980b9"/>
+                <rect x="35" y="50" width="30" height="30" fill="#2980b9"/>
+                <path d="M20 85 C35 75, 65 75, 80 85" fill="#27ae60" stroke="#27ae60" stroke-width="5"/>
+                <path d="M30 70 C45 60, 55 60, 70 70" fill="#2980b9" stroke="#2980b9" stroke-width="5"/>
+              </svg>
+            `;
+          }
+
+          // Group subjects by source file
+          const sourceMap = {};
+          student.subjects.forEach((subject) => {
+            if (!sourceMap[subject.source]) {
+              sourceMap[subject.source] = [];
+            }
+            sourceMap[subject.source].push(subject);
+          });
+
+          // Create report card header with logo
+          reportCard.innerHTML = `
+            <button class="remove-card" onclick="removeReportCard('${reportCardId}')">×</button>
+            <div class="report-card-header">
+              <div class="logo-container">
+                ${logoHtml}
+              </div>
+              <div class="school-info">
+                <h2>REPORT CARD</h2>
+                <p>${schoolName}</p>
+              </div>
+            </div>
+            <div class="report-card-body">
+              <div class="student-info">
+                <div class="info-row">
+                  <div class="info-label">Student</div>
+                  <div class="info-value">${student.name}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Exam</div>
+                  <div class="info-value">${examName}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Class</div>
+                  <div class="info-value">${student.class}</div>
+                </div>
+              </div>
+              
+              <table>
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Score</th>
+                    <th>Grade</th>
+                    ${
+                      Object.keys(sourceMap).length > 1 ? "<th>Source</th>" : ""
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  ${student.subjects
+                    .map(
+                      (subject) => `
+                      <tr>
+                        <td>${subject.subject}</td>
+                        <td>${subject.score}/${subject.totalQuestions}</td>
+                        <td>${subject.grade}</td>
+                        ${
+                          Object.keys(sourceMap).length > 1
+                            ? `<td><span class="badge">${subject.source}</span></td>`
+                            : ""
+                        }
+                      </tr>
+                    `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+            <div class="card-actions">
+              <button onclick="downloadReportCard('${reportCardId}', '${
+            student.name
+          } Report Card')">Download This Report Card</button>
+            </div>
+          `;
+
+          container.appendChild(reportCard);
+        }
+
+        // Store report card IDs to be accessible for download all function
+        window.reportCardIds = reportCardIds;
+      }
+
+      function removeReportCard(reportCardId) {
+        const reportCard = document.getElementById(reportCardId);
+        if (reportCard) {
+          reportCard.remove();
+
+          // Update the global reportCardIds array
+          if (window.reportCardIds) {
+            window.reportCardIds = window.reportCardIds.filter(
+              (id) => id !== reportCardId
+            );
+
+            // Hide the download all button if no cards remain
+            if (window.reportCardIds.length === 0) {
+              document.getElementById("downloadAllBtn").style.display = "none";
+            }
+          }
+        }
+      }
+
+      // Improved PDF generation using jsPDF and html2canvas
+      async function downloadReportCard(elementId, filename) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        // Temporarily hide the buttons
+        const actionButton = element.querySelector(".card-actions");
+        const removeButton = element.querySelector(".remove-card");
+
+        if (actionButton) actionButton.style.display = "none";
+        if (removeButton) removeButton.style.display = "none";
+
+        try {
+          // Create a new jsPDF instance - A4 format
+          const pdf = new jsPDF("p", "mm", "a4");
+
+          // Convert the HTML element to canvas
+          const canvas = await html2canvas(element, {
+            scale: 2, // Higher scale for better quality
+            useCORS: true, // To handle images from different domains
+            logging: false, // Disable logs
+            allowTaint: true, // Allow tainted canvas
+          });
+
+          // Calculate the proper width and height to fit on A4
+          const imgData = canvas.toDataURL("image/jpeg", 1.0);
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+          const imgWidth = canvas.width;
+          const imgHeight = canvas.height;
+          const ratio = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+          const imgX = (pageWidth - imgWidth * ratio) / 2;
+          const imgY = 10; // Margin from top
+
+          // Add the image to PDF
+          pdf.addImage(
+            imgData,
+            "JPEG",
+            imgX,
+            imgY,
+            imgWidth * ratio,
+            imgHeight * ratio
+          );
+
+          // Save the PDF
+          pdf.save(filename + ".pdf");
+        } catch (error) {
+          console.error("Error generating PDF:", error);
+          alert("Failed to generate PDF. Please try again.");
+        } finally {
+          // Restore the buttons
+          if (actionButton) actionButton.style.display = "flex";
+          if (removeButton) removeButton.style.display = "flex";
+        }
+      }
+
+      async function downloadAllReportCards() {
+        if (!window.reportCardIds || window.reportCardIds.length === 0) {
+          alert("No report cards to download");
+          return;
+        }
+
+        const schoolName = document.getElementById("schoolName").value;
+        const progressContainer = document.getElementById("progressContainer");
+        const progressBar = document.getElementById("progressBar");
+
+        // Show progress bar
+        progressContainer.style.display = "block";
+        progressBar.style.width = "0%";
+        progressBar.textContent = "0%";
+
+        // Hide all buttons
+        document
+          .querySelectorAll(".card-actions, .remove-card")
+          .forEach((btn) => {
+            btn.style.display = "none";
+          });
+
+        try {
+          // Create a new jsPDF instance
+          const pdf = new jsPDF("p", "mm", "a4");
+          let currentPage = 0;
+
+          // Loop through each report card
+          for (let i = 0; i < window.reportCardIds.length; i++) {
+            const id = window.reportCardIds[i];
+            const element = document.getElementById(id);
+
+            if (!element) continue;
+
+            // Update progress
+            const progress = Math.round(
+              (i / window.reportCardIds.length) * 100
+            );
+            progressBar.style.width = progress + "%";
+            progressBar.textContent = progress + "%";
+
+            // Convert the HTML element to canvas
+            const canvas = await html2canvas(element, {
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              allowTaint: true,
+            });
+
+            // Add a new page if not the first page
+            if (currentPage > 0) {
+              pdf.addPage();
+            }
+
+            // Calculate dimensions to fit on A4
+            const imgData = canvas.toDataURL("image/jpeg", 1.0);
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const ratio = Math.min(
+              pageWidth / imgWidth,
+              pageHeight / imgHeight
+            );
+            const imgX = (pageWidth - imgWidth * ratio) / 2;
+            const imgY = 10;
+
+            // Add the image to PDF
+            pdf.addImage(
+              imgData,
+              "JPEG",
+              imgX,
+              imgY,
+              imgWidth * ratio,
+              imgHeight * ratio
+            );
+
+            currentPage++;
+          }
+
+          // Complete progress
+          progressBar.style.width = "100%";
+          progressBar.textContent = "100%";
+
+          // Save the PDF
+          pdf.save(schoolName + " - All Report Cards.pdf");
+        } catch (error) {
+          console.error("Error generating PDF:", error);
+          alert("Failed to generate PDF. Please try again.");
+        } finally {
+          // Hide progress bar
+          setTimeout(() => {
+            progressContainer.style.display = "none";
+          }, 1000);
+
+          // Show all buttons again
+          document
+            .querySelectorAll(".card-actions, .remove-card")
+            .forEach((btn) => {
+              btn.style.display = "flex";
+            });
+        }
+      }
+    </script>
+  </body>
+</html>
