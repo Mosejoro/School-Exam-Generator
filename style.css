@@ -322,16 +322,14 @@ input[type="file"]:hover {
 }
 
 .report-card-header {
-  background: linear-gradient(to right, var(--primary), var(--secondary));
   padding: 30px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  text-align: right;
 }
 
 .school-logo {
-  width: 100px;
-  height: 100px;
+  width: 2rem;
   background-color: white;
   border-radius: 50%;
   padding: 10px;
@@ -340,7 +338,7 @@ input[type="file"]:hover {
 }
 
 .school-info {
-  text-align: right;
+  text-align: left;
   color: white;
 }
 
@@ -540,4 +538,10 @@ input[type="file"]:hover {
   body {
     background-color: white;
   }
+}
+.upload-section .Img {
+  width: 4rem;
+}
+.logo {
+  width: 10rem;
 }
